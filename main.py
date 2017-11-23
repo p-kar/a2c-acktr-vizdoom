@@ -5,7 +5,6 @@ import time
 import sys
 import signal
 
-import gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -26,10 +25,13 @@ from visualize import visdom_plot
 envs = None
 
 def signal_handler(signal, frame):
+    print ('signal_handler called')
+    global envs
     envs.close()
     sys.exit(0)
 
-signal.signal(signal.SIGINT, signal_handler)
+# original_sigint = signal.getsignal(signal.SIGINT)
+# signal.signal(signal.SIGINT, signal_handler)
 
 args = get_args()
 
@@ -54,7 +56,7 @@ def main():
     print("VISDOOM LEARNER START")
     print("#######")
 
-    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OMP_NUM_THREADS'] = '1' 
 
     if args.vis:
         from visdom import Visdom
@@ -114,7 +116,6 @@ def main():
             # Sample actions
             value, action = actor_critic.act(Variable(rollouts.observations[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
-
             # Obser reward and next obs
             obs, reward, done, info = envs.step(cpu_actions)
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
@@ -214,4 +215,5 @@ def main():
                 pass
 
 if __name__ == "__main__":
-    main()
+   main()
+
