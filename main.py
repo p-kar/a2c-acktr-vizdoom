@@ -52,9 +52,9 @@ except OSError:
 
 
 def main():
-    print("#######")
+    print("#####################")
     print("VISDOOM LEARNER START")
-    print("#######")
+    print("#####################")
 
     os.environ['OMP_NUM_THREADS'] = '1' 
 
@@ -118,6 +118,7 @@ def main():
             cpu_actions = action.data.squeeze(1).cpu().numpy()
             # Obser reward and next obs
             obs, reward, done, info = envs.step(cpu_actions)
+            # print ('Actions:', cpu_actions, 'Rewards:', reward)
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
             episode_rewards += reward
 

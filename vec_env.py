@@ -22,26 +22,27 @@ def worker(remote, parent_remote, env_fn_wrapper):
         # print ('Action:', data)
         if cmd == 'step':
             info = 0.0
-            reward = env.make_action(action)
-            if action == 2:                                         # we add a penalty for shooting unnecessarily
-                reward = reward - 0.1
+            reward = env.make_action(action) / 100.0
+            # if data == 2:                                           # we add a penalty for shooting unnecessarily
+            #    reward = reward - 0.001
             if not env.is_episode_finished():
                 ob = process_frame(env.get_state().screen_buffer)
                 agent_health = env.get_state().game_variables[0]
                 if prev_agent_health > agent_health:                # we add a penalty if the agent is hit
                     # print ('agent hit')
-                    reward = reward - 0.5
+                    # reward = reward - 0.5
                     prev_agent_health = agent_health
             done = env.is_episode_finished()
             if done:
                 # print ('Restarting worker node')
                 env.new_episode()
-                prev_agent_health = 100
                 ob = process_frame(env.get_state().screen_buffer)
+                prev_agent_health = env.get_state().game_variables[0]
             remote.send((ob, reward, done, info))
         elif cmd == 'reset':
             env.new_episode()
             ob = process_frame(env.get_state().screen_buffer)
+            prev_agent_health = env.get_state().game_variables[0]
             remote.send(ob)
         elif cmd == 'reset_task':
             print ('reset_task: Not implemented')
