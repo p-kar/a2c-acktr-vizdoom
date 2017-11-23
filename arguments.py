@@ -27,10 +27,10 @@ def get_args():
                         help='value loss coefficient (default: 0.5)')
     parser.add_argument('--seed', type=int, default=1,
                         help='random seed (default: 1)')
-    parser.add_argument('--num-processes', type=int, default=2,
-                        help='how many training CPU processes to use (default: 2)')
-    parser.add_argument('--num-steps', type=int, default=300,
-                        help='number of forward steps in A2C (default: 300)')
+    parser.add_argument('--num-processes', type=int, default=16,
+                        help='how many training CPU processes to use (default: 16)')
+    parser.add_argument('--num-steps', type=int, default=10,
+                        help='number of forward steps in A2C (default: 10)')
     parser.add_argument('--ppo-epoch', type=int, default=4,
                         help='number of ppo epochs (default: 4)')
     parser.add_argument('--batch-size', type=int, default=64,
