@@ -1,4 +1,4 @@
-from envs import make_env
+from envs import make_visual_env
 from vec_env import VecEnv
 from time import sleep
 from random import choice
@@ -6,7 +6,7 @@ from random import choice
 num_envs = 2
 
 envs = VecEnv([
-        make_env(i)
+        make_visual_env(i)
         for i in range(num_envs)
     ])
 

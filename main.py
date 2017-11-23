@@ -2,6 +2,8 @@ import copy
 import glob
 import os
 import time
+import sys
+import signal
 
 import gym
 import numpy as np
@@ -20,6 +22,14 @@ from model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
 # from gif import make_gif
+
+envs = None
+
+def signal_handler(signal, frame):
+    envs.close()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 args = get_args()
 
@@ -51,6 +61,7 @@ def main():
         viz = Visdom()
         win = None
 
+    global envs
     envs = VecEnv([
         make_env(i)
         for i in range(args.num_processes)
