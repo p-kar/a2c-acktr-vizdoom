@@ -17,7 +17,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
         action = [True if i == data else False for i in range(env.get_available_buttons_size())]
         if cmd == 'step':
             info = 0.0
-            reward = env.make_action(action) / 100.0
+            reward = env.make_action(action)
             if not env.is_episode_finished():
                 ob = process_frame(env.get_state().screen_buffer)
             done = env.is_episode_finished()

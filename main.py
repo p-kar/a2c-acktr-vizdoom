@@ -19,7 +19,7 @@ from kfac import KFACOptimizer
 from model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
-from gif import make_gif
+# from gif import make_gif
 
 args = get_args()
 
