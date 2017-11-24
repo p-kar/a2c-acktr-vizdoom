@@ -214,6 +214,8 @@ def main():
                 win = visdom_plot(viz, win, args.log_dir, 'VizDoom', args.algo)
             except IOError:
                 pass
+    envs.close()
+    time.sleep(5)
 
 if __name__ == "__main__":
    main()

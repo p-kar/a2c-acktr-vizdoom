@@ -19,37 +19,32 @@ def worker(remote, parent_remote, env_fn_wrapper):
             import random
             data = random.randint(0, env.get_available_buttons_size() - 1)
         action = [True if i == data else False for i in range(env.get_available_buttons_size())]
-        # print ('Action:', data)
         if cmd == 'step':
             info = 0.0
-            reward = env.make_action(action) / 100.0
-            # if data == 2:                                           # we add a penalty for shooting unnecessarily
-            #    reward = reward - 0.001
+            reward = env.make_action(action)
             if not env.is_episode_finished():
                 ob = process_frame(env.get_state().screen_buffer)
                 agent_health = env.get_state().game_variables[0]
                 if prev_agent_health > agent_health:                # we add a penalty if the agent is hit
                     # print ('agent hit')
-                    # reward = reward - 0.5
-                    prev_agent_health = agent_health
+                    reward = reward - 10
+                prev_agent_health = agent_health
             done = env.is_episode_finished()
             if done:
                 # print ('Restarting worker node')
                 env.new_episode()
                 ob = process_frame(env.get_state().screen_buffer)
-                prev_agent_health = env.get_state().game_variables[0]
+            reward = reward / 100.0                                 # normalizing the reward
             remote.send((ob, reward, done, info))
         elif cmd == 'reset':
             env.new_episode()
             ob = process_frame(env.get_state().screen_buffer)
-            prev_agent_health = env.get_state().game_variables[0]
             remote.send(ob)
         elif cmd == 'reset_task':
             print ('reset_task: Not implemented')
             raise NotImplementedError
-            # ob = env.reset_task()
-            # remote.send(ob)
         elif cmd == 'close':
+            print ('Terminating doom environment')
             remote.close()
             break
         elif cmd == 'get_spaces':
