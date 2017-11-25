@@ -20,6 +20,8 @@ parser.add_argument('--log-interval', type=int, default=10,
                     help='log interval, one log per n updates (default: 10)')
 parser.add_argument('--env-name', default='VizDoom',
                     help='environment to train on (default: VizDoom)')
+parser.add_argument('--config-path', default='./scenarios/basic.cfg',
+                        help='vizdoom configuration file path (default: ./scenarios/basic.cfg)')
 parser.add_argument('--load-dir', default='./trained_models/',
                     help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument('--log-dir', default='/tmp/doom/',

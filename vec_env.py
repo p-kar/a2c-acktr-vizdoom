@@ -12,30 +12,34 @@ def process_frame(frame):
 def worker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
     env = env_fn_wrapper.x
-    prev_agent_health = 100
+    prev_agent_health = 0
+    prev_agent_ammo = 0
     while True:
         cmd, data = remote.recv()
         if data is None:
             import random
             data = random.randint(0, env.get_available_buttons_size() - 1)
         action = [True if i == data else False for i in range(env.get_available_buttons_size())]
+        
         if cmd == 'step':
-            info = 0.0
             reward = env.make_action(action)
             if not env.is_episode_finished():
                 ob = process_frame(env.get_state().screen_buffer)
+                print ('Game Vars:', env.get_state().game_variables)
                 agent_health = env.get_state().game_variables[0]
+                agent_ammo = env.get_state().game_variables[1]
                 if prev_agent_health > agent_health:                # we add a penalty if the agent is hit
-                    # print ('agent hit')
                     reward = reward - 10
+                if prev_agent_ammo > agent_ammo:                    # we add a penalty if the agent fires
+                    reward = reward - 5
                 prev_agent_health = agent_health
+                prev_agent_ammo = agent_ammo
             done = env.is_episode_finished()
             if done:
-                # print ('Restarting worker node')
                 env.new_episode()
                 ob = process_frame(env.get_state().screen_buffer)
             reward = reward / 100.0                                 # normalizing the reward
-            remote.send((ob, reward, done, info))
+            remote.send((ob, reward, done, 0.0))
         elif cmd == 'reset':
             env.new_episode()
             ob = process_frame(env.get_state().screen_buffer)

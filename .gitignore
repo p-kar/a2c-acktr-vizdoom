@@ -1,0 +1,12 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+_vizdoom.ini
+
+# Network models
+trained_models/
+*.pt
+
+# Mac specifig ignores
+.DS_Store
+

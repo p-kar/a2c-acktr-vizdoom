@@ -49,6 +49,8 @@ def get_args():
                         help='number of frames to train (default: 10e6)')
     parser.add_argument('--env-name', default='VizDoom',
                         help='environment to train on (default: VizDoom)')
+    parser.add_argument('--config-path', default='./scenarios/basic.cfg',
+                        help='vizdoom configuration file path (default: ./scenarios/basic.cfg)')
     parser.add_argument('--log-dir', default='/tmp/vizdoom/',
                         help='directory to save agent logs (default: /tmp/vizdoom)')
     parser.add_argument('--save-dir', default='./trained_models/',
