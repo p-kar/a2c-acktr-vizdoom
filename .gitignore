@@ -1,7 +1,9 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 
+# Vizdoom files
 _vizdoom.ini
+*.wad.bak
 
 # Network models
 trained_models/
