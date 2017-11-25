@@ -31,7 +31,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
                 if prev_agent_health > agent_health:                # we add a penalty if the agent is hit
                     reward = reward - 10
                 if prev_agent_ammo > agent_ammo:                    # we add a penalty if the agent fires
-                    reward = reward - 5
+                    reward = reward - 0
                 prev_agent_health = agent_health
                 prev_agent_ammo = agent_ammo
             done = env.is_episode_finished()
