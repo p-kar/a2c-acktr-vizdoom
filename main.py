@@ -65,7 +65,7 @@ def main():
 
     global envs
     envs = VecEnv([
-        make_env(i)
+        make_env(i, args.config_path)
         for i in range(args.num_processes)
     ])
 

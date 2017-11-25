@@ -25,7 +25,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             reward = env.make_action(action)
             if not env.is_episode_finished():
                 ob = process_frame(env.get_state().screen_buffer)
-                print ('Game Vars:', env.get_state().game_variables)
+                # print ('Game Vars:', env.get_state().game_variables)
                 agent_health = env.get_state().game_variables[0]
                 agent_ammo = env.get_state().game_variables[1]
                 if prev_agent_health > agent_health:                # we add a penalty if the agent is hit
