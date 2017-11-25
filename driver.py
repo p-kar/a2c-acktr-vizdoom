@@ -5,7 +5,7 @@ from random import choice
 
 num_envs = 1
 
-envs = VecEnv([make_visual_env('./scenarios/deathmatch.cfg') for i in range(num_envs)])
+envs = VecEnv([make_visual_env('./scenarios/deadly_corridor.cfg') for i in range(num_envs)])
 
 # Define some actions. Each list entry corresponds to declared buttons:
 # MOVE_LEFT, MOVE_RIGHT, ATTACK

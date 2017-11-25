@@ -33,7 +33,7 @@ try:
 except OSError:
     pass
 
-envs = VecEnv([make_visual_env()])
+envs = VecEnv([make_visual_env(args.config_path)])
 
 actor_critic = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 actor_critic.eval()
@@ -58,6 +58,8 @@ while True:
     value, action = actor_critic.act(Variable(current_obs, volatile=True),
                                         deterministic=True)
     cpu_actions = action.data.cpu().numpy()
+
+    print ('Action:', [cpu_actions[0]])
 
     # Obser reward and next obs
     obs, _, done, _ = envs.step([cpu_actions[0]])
