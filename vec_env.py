@@ -29,7 +29,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
                 agent_health = env.get_state().game_variables[0]
                 agent_ammo = env.get_state().game_variables[1]
                 if prev_agent_health > agent_health:                # we add a penalty if the agent is hit
-                    reward = reward - 10
+                    reward = reward - 0
                 if prev_agent_ammo > agent_ammo:                    # we add a penalty if the agent fires
                     reward = reward - 0
                 prev_agent_health = agent_health
