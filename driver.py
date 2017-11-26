@@ -5,7 +5,7 @@ from random import choice
 
 num_envs = 1
 
-envs = VecEnv([make_visual_env('./scenarios/health_gathering.cfg') for i in range(num_envs)])
+envs = VecEnv([make_visual_env('./scenarios/deathmatch_maze.cfg') for i in range(num_envs)])
 
 # Define some actions. Each list entry corresponds to declared buttons:
 # MOVE_LEFT, MOVE_RIGHT, ATTACK
