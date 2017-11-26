@@ -14,3 +14,4 @@ def make_visual_env(config_file_path=None):
     game.set_window_visible(True)
     game.init()
     return game
+
