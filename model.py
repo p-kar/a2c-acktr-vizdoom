@@ -35,6 +35,8 @@ def orthogonal(tensor, gain=1):
 
 def weights_init(m):
     classname = m.__class__.__name__
+    if classname == "CNNPolicy" or classname == "MLPPolicy":
+        return
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
         orthogonal(m.weight.data)
         if m.bias is not None:
@@ -104,6 +106,12 @@ class CNNPolicy(FFPolicy):
 
         return self.critic_linear(x), x
 
+    def get_probs(self, inputs):
+        value, x = self(inputs)
+        x = self.dist(x)
+        probs = F.softmax(x)
+        return probs
+
 
 def weights_init_mlp(m):
     classname = m.__class__.__name__
@@ -167,3 +175,137 @@ class MLPPolicy(FFPolicy):
         x = F.tanh(x)
 
         return value, x
+
+
+# Implements the Attend, Adapt and Transfer architecture from ICLR 2017
+class A2TPolicy(FFPolicy):
+    def __init__(self, num_inputs, action_space_shape, source_models):
+        super(A2TPolicy, self).__init__()
+        
+        # adding all pretrained models to the network
+        self.num_source_models = len(source_models)
+        for sm, i in zip(source_models, range(len(source_models))):
+            self.add_module('source_' + str(i), sm)
+        # freezing params for pretrained models
+        for param in self.parameters():
+            param.requires_grad = False
+
+        # parameters for the base network
+        self.base_conv1 = nn.Conv2d(num_inputs, 32, 8, stride=4)
+        self.base_conv2 = nn.Conv2d(32, 64, 4, stride=2)
+        self.base_conv3 = nn.Conv2d(64, 32, 3, stride=1)
+
+        self.base_linear1 = nn.Linear(32 * 7 * 7, 512)
+
+        self.base_dist_linear = nn.Linear(512, action_space_shape)
+
+        self.base_critic_linear = nn.Linear(512, 1)
+
+        # parameters for the attention network
+        self.attention_conv1 = nn.Conv2d(num_inputs, 32, 8, stride=4)
+        self.attention_conv2 = nn.Conv2d(32, 64, 4, stride=2)
+        self.attention_conv3 = nn.Conv2d(64, 32, 3, stride=1)
+
+        self.attention_linear1 = nn.Linear(32 * 7 * 7, 512)
+        
+        num_source_models = len(source_models)
+        self.attention_dist_linear = nn.Linear(512, num_source_models + 1)
+
+        # sets the module to train mode
+        self.train()
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        self.apply(weights_init)
+
+        relu_gain = nn.init.calculate_gain('relu')
+        self.base_conv1.weight.data.mul_(relu_gain)
+        self.base_conv2.weight.data.mul_(relu_gain)
+        self.base_conv3.weight.data.mul_(relu_gain)
+        self.base_linear1.weight.data.mul_(relu_gain)
+        self.base_dist_linear.weight.data.mul_(relu_gain)
+
+        self.attention_conv1.weight.data.mul_(relu_gain)
+        self.attention_conv2.weight.data.mul_(relu_gain)
+        self.attention_conv3.weight.data.mul_(relu_gain)
+        self.attention_linear1.weight.data.mul_(relu_gain)
+        self.attention_dist_linear.weight.data.mul_(relu_gain)
+
+    def forward(self, inputs):
+        # go forward in the base network
+        x = self.base_conv1(inputs / 255.0)
+        x = F.relu(x)
+
+        x = self.base_conv2(x)
+        x = F.relu(x)
+
+        x = self.base_conv3(x)
+        x = F.relu(x)
+
+        x = x.view(-1, 32 * 7 * 7)
+        x = self.base_linear1(x)
+        x = F.relu(x)
+
+        value = self.base_critic_linear(x)
+
+        x = self.base_dist_linear(x)
+        x = F.softmax(x)
+
+        # go forward in the attention network
+        y = self.attention_conv1(inputs / 255.0)
+        y = F.relu(y)
+
+        y = self.attention_conv2(y)
+        y = F.relu(y)
+
+        y = self.attention_conv3(y)
+        y = F.relu(y)
+
+        y = y.view(-1, 32 * 7 * 7)
+        y = self.attention_linear1(y)
+        y = F.relu(y)
+
+        y = self.attention_dist_linear(y)
+        y = F.softmax(y)
+
+        # combine base and source task outputs
+        # with the attention network weights
+        source_probs = [getattr(self, 'source_%d' % i).get_probs(inputs / 255.0)
+                        for i in range(self.num_source_models)]
+        source_probs.append(x)
+        # stacking probability distribution as rows
+        z = torch.stack(tuple(source_probs), 0)
+        # multiplying by the attentions weights
+        y = torch.t(y).unsqueeze(2)
+        z = torch.mul(y, z)
+        # summing the rows and reshaping as a row
+        z = torch.sum(z, 0)
+
+        return value, z
+
+    def act(self, inputs, deterministic=False):
+        value, x = self(inputs)
+        probs = F.softmax(x)
+        if deterministic is False:
+            action = probs.multinomial()
+        else:
+            action = probs.max(1)[1]
+        return value, action
+
+    def evaluate_actions(self, inputs, actions):
+        value, x = self(inputs)
+
+        log_probs = F.log_softmax(x)
+        probs = F.softmax(x)
+
+        action_log_probs = log_probs.gather(1, actions)
+        dist_entropy = -(log_probs * probs).sum(-1).mean()
+        
+        return value, action_log_probs, dist_entropy
+
+    def get_probs(self, inputs):
+        value, x = self(inputs)
+        probs = F.softmax(x)
+        return probs
+
+

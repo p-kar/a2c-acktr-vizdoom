@@ -6,7 +6,7 @@ import torch
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument('--algo', default='a2c',
-                        help='algorithm to use: a2c | acktr')
+                        help='algorithm to use: a2c | acktr | a2t')
     parser.add_argument('--lr', type=float, default=7e-4,
                         help='learning rate (default: 7e-4)')
     parser.add_argument('--eps', type=float, default=1e-5,
@@ -51,6 +51,8 @@ def get_args():
                         help='environment to train on (default: VizDoom)')
     parser.add_argument('--config-path', default='./scenarios/basic.cfg',
                         help='vizdoom configuration file path (default: ./scenarios/basic.cfg)')
+    parser.add_argument('--source-models-path', default='./trained_models',
+                        help='directory from where to load source task models [A2T only] (default: ./trained_models)')
     parser.add_argument('--log-dir', default='/tmp/vizdoom/',
                         help='directory to save agent logs (default: /tmp/vizdoom)')
     parser.add_argument('--save-dir', default='./trained_models/',

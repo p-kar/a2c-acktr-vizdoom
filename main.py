@@ -17,25 +17,16 @@ from arguments import get_args
 from envs import make_env
 from vec_env import VecEnv
 from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy
+from model import CNNPolicy, MLPPolicy, A2TPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
 # from gif import make_gif
 
 envs = None
 
-def signal_handler(signal, frame):
-    print ('signal_handler called')
-    global envs
-    envs.close()
-    sys.exit(0)
-
-# original_sigint = signal.getsignal(signal.SIGINT)
-# signal.signal(signal.SIGINT, signal_handler)
-
 args = get_args()
 
-assert args.algo in ['a2c', 'acktr']
+assert args.algo in ['a2c', 'acktr', 'a2t']
 
 num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
@@ -72,10 +63,15 @@ def main():
     obs_shape = envs.observation_space_shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    # if len(envs.observation_space.shape) == 3:
-    actor_critic = CNNPolicy(obs_shape[0], envs.action_space_shape)
-    # else:
-        # actor_critic = MLPPolicy(obs_shape[0], envs.action_space_shape)
+    if args.algo == 'a2c' or args.algo == 'acktr':
+        actor_critic = CNNPolicy(obs_shape[0], envs.action_space_shape)
+    elif args.algo == 'a2t':
+        source_models = []
+        files = glob.glob(os.path.join(args.source_models_path, '*.pt'))
+        for file in files:
+            print (file, 'loading model...')
+            source_models.append(torch.load(file))
+        actor_critic = A2TPolicy(obs_shape[0], envs.action_space_shape, source_models)
 
     action_shape = 1
 
@@ -84,6 +80,9 @@ def main():
 
     if args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
+    elif args.algo == 'a2t':
+        params = [p for p in actor_critic.parameters() if p.requires_grad]
+        optimizer = optim.RMSprop(params, args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
 
@@ -146,7 +145,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        if args.algo in ['a2c', 'acktr']:
+        if args.algo in ['a2c', 'acktr', 'a2t']:
             values, action_log_probs, dist_entropy = actor_critic.evaluate_actions(Variable(rollouts.observations[:-1].view(-1, *obs_shape)), Variable(rollouts.actions.view(-1, action_shape)))
 
             values = values.view(args.num_steps, args.num_processes, 1)
@@ -177,7 +176,7 @@ def main():
             optimizer.zero_grad()
             (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
 
-            if args.algo == 'a2c':
+            if args.algo == 'a2c' or args.algo == 'a2t':
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()
