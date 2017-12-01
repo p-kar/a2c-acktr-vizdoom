@@ -92,11 +92,22 @@ class VecEnv():
 
 
     def step(self, actions):
-        for remote, action in zip(self.remotes, actions):
-            remote.send(('step', action))
-        results = [remote.recv() for remote in self.remotes]
-        obs, rews, dones, infos = zip(*results)
-        return np.stack(obs), np.stack(rews), np.stack(dones), infos
+        cumul_rewards = None
+        cumul_dones = None
+        for _ in range(4):
+            for remote, action in zip(self.remotes, actions):
+                remote.send(('step', action))
+            results = [remote.recv() for remote in self.remotes]
+            obs, rews, dones, infos = zip(*results)
+            if cumul_rewards is None:
+                cumul_rewards = np.stack(rews)
+            else:
+                cumul_rewards += np.stack(rews)
+            if cumul_dones is None:
+                cumul_dones = np.stack(dones)
+            else:
+                cumul_dones |= np.stack(dones)
+        return np.stack(obs), cumul_rewards, cumul_dones, infos
 
     def reset(self):
         for remote in self.remotes:
