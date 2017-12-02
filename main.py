@@ -17,7 +17,7 @@ from arguments import get_args
 from envs import make_env
 from vec_env import VecEnv
 from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy, A2TPolicy
+from model import CNNPolicy, MLPPolicy, A2TPolicy, ResnetPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
 # from gif import make_gif
@@ -26,7 +26,7 @@ envs = None
 
 args = get_args()
 
-assert args.algo in ['a2c', 'acktr', 'a2t']
+assert args.algo in ['a2c', 'acktr', 'a2t', 'resnet']
 
 num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
@@ -37,7 +37,7 @@ if args.cuda:
 try:
     os.makedirs(args.log_dir)
 except OSError:
-    files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
+    files = glob.glob(os.path.join(args.log_dir, '*.log'))
     for f in files:
         os.remove(f)
 
@@ -58,7 +58,7 @@ def main():
     envs = VecEnv([
         make_env(i, args.config_path)
         for i in range(args.num_processes)
-    ])
+    ], logging=True, log_dir=args.log_dir)
 
     obs_shape = envs.observation_space_shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
@@ -72,13 +72,16 @@ def main():
             print (file, 'loading model...')
             source_models.append(torch.load(file))
         actor_critic = A2TPolicy(obs_shape[0], envs.action_space_shape, source_models)
+    elif args.algo == 'resnet':
+        args.num_stack = 3
+        actor_critic = ResnetPolicy(obs_shape[0], envs.action_space_shape)
 
     action_shape = 1
 
     if args.cuda:
         actor_critic.cuda()
 
-    if args.algo == 'a2c':
+    if args.algo == 'a2c' or args.algo == 'resnet':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'a2t':
         params = [p for p in actor_critic.parameters() if p.requires_grad]
@@ -145,7 +148,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        if args.algo in ['a2c', 'acktr', 'a2t']:
+        if args.algo in ['a2c', 'acktr', 'a2t', 'resnet']:
             values, action_log_probs, dist_entropy = actor_critic.evaluate_actions(Variable(rollouts.observations[:-1].view(-1, *obs_shape)), Variable(rollouts.actions.view(-1, action_shape)))
 
             values = values.view(args.num_steps, args.num_processes, 1)
@@ -176,7 +179,7 @@ def main():
             optimizer.zero_grad()
             (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
 
-            if args.algo == 'a2c' or args.algo == 'a2t':
+            if args.algo == 'a2c' or args.algo == 'a2t' or args.algo == 'resnet':
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()
@@ -197,6 +200,7 @@ def main():
             torch.save(save_model, os.path.join(save_path, 'VizDoom' + ".pt"))
 
         if j % args.log_interval == 0:
+            envs.log()
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".

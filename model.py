@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import models
 from running_stat import ObsNorm
 from distributions import Categorical, DiagGaussian
 
@@ -191,25 +192,23 @@ class A2TPolicy(FFPolicy):
             param.requires_grad = False
 
         # parameters for the base network
-        self.base_conv1 = nn.Conv2d(num_inputs, 32, 8, stride=4)
-        self.base_conv2 = nn.Conv2d(32, 64, 4, stride=2)
-        self.base_conv3 = nn.Conv2d(64, 32, 3, stride=1)
+        self.base_conv1 = nn.Conv2d(num_inputs, 16, 8, stride=4)
+        self.base_conv2 = nn.Conv2d(16, 32, 4, stride=2)
 
-        self.base_linear1 = nn.Linear(32 * 7 * 7, 512)
+        self.base_linear1 = nn.Linear(32 * 9 * 9, 256)
 
-        self.base_dist_linear = nn.Linear(512, action_space_shape)
+        self.base_dist_linear = nn.Linear(256, action_space_shape)
 
-        self.base_critic_linear = nn.Linear(512, 1)
+        self.base_critic_linear = nn.Linear(256, 1)
 
         # parameters for the attention network
-        self.attention_conv1 = nn.Conv2d(num_inputs, 32, 8, stride=4)
-        self.attention_conv2 = nn.Conv2d(32, 64, 4, stride=2)
-        self.attention_conv3 = nn.Conv2d(64, 32, 3, stride=1)
+        self.attention_conv1 = nn.Conv2d(num_inputs, 16, 8, stride=4)
+        self.attention_conv2 = nn.Conv2d(16, 32, 4, stride=2)
 
-        self.attention_linear1 = nn.Linear(32 * 7 * 7, 512)
+        self.attention_linear1 = nn.Linear(32 * 9 * 9, 256)
         
         num_source_models = len(source_models)
-        self.attention_dist_linear = nn.Linear(512, num_source_models + 1)
+        self.attention_dist_linear = nn.Linear(256, num_source_models + 1)
 
         # sets the module to train mode
         self.train()
@@ -221,13 +220,11 @@ class A2TPolicy(FFPolicy):
         relu_gain = nn.init.calculate_gain('relu')
         self.base_conv1.weight.data.mul_(relu_gain)
         self.base_conv2.weight.data.mul_(relu_gain)
-        self.base_conv3.weight.data.mul_(relu_gain)
         self.base_linear1.weight.data.mul_(relu_gain)
         self.base_dist_linear.weight.data.mul_(relu_gain)
 
         self.attention_conv1.weight.data.mul_(relu_gain)
         self.attention_conv2.weight.data.mul_(relu_gain)
-        self.attention_conv3.weight.data.mul_(relu_gain)
         self.attention_linear1.weight.data.mul_(relu_gain)
         self.attention_dist_linear.weight.data.mul_(relu_gain)
 
@@ -239,10 +236,7 @@ class A2TPolicy(FFPolicy):
         x = self.base_conv2(x)
         x = F.relu(x)
 
-        x = self.base_conv3(x)
-        x = F.relu(x)
-
-        x = x.view(-1, 32 * 7 * 7)
+        x = x.view(-1, 32 * 9 * 9)
         x = self.base_linear1(x)
         x = F.relu(x)
 
@@ -258,10 +252,7 @@ class A2TPolicy(FFPolicy):
         y = self.attention_conv2(y)
         y = F.relu(y)
 
-        y = self.attention_conv3(y)
-        y = F.relu(y)
-
-        y = y.view(-1, 32 * 7 * 7)
+        y = y.view(-1, 32 * 9 * 9)
         y = self.attention_linear1(y)
         y = F.relu(y)
 
@@ -308,4 +299,64 @@ class A2TPolicy(FFPolicy):
         probs = F.softmax(x)
         return probs
 
+# changed beginning network to resnet
+class ResnetPolicy(FFPolicy):
+    def __init__(self, num_inputs, action_space_shape):
+        super(ResnetPolicy, self).__init__()
+
+        self.resnet = models.resnet18()
+
+        self.linear1 = nn.Linear(1000, 512)
+        self.dist_linear = nn.Linear(512, action_space_shape)
+        self.critic_linear = nn.Linear(512, 1)
+
+        # sets the module to train mode
+        self.train()
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        self.apply(weights_init)
+
+        relu_gain = nn.init.calculate_gain('relu')
+        # self.resnet.weight.data.mul_(relu_gain)
+        self.linear1.weight.data.mul_(relu_gain)
+        self.dist_linear.weight.data.mul_(relu_gain)
+        self.critic_linear.weight.data.mul_(relu_gain)
+
+    def forward(self, inputs):
+        # go forward in the base network
+        x = self.resnet(inputs / 255.0)
+        x = self.linear1(x)
+        x = F.relu(x)
+
+        value = self.critic_linear(x)
+
+        x = self.dist_linear(x)
+
+        return value, x
+
+    def act(self, inputs, deterministic=False):
+        value, x = self(inputs)
+        probs = F.softmax(x)
+        if deterministic is False:
+            action = probs.multinomial()
+        else:
+            action = probs.max(1)[1]
+        return value, action
+
+    def evaluate_actions(self, inputs, actions):
+        value, x = self(inputs)
+
+        log_probs = F.log_softmax(x)
+        probs = F.softmax(x)
+
+        action_log_probs = log_probs.gather(1, actions)
+        dist_entropy = -(log_probs * probs).sum(-1).mean()
+        
+        return value, action_log_probs, dist_entropy
+
+    def get_probs(self, inputs):
+        value, x = self(inputs)
+        probs = F.softmax(x)
+        return probs
 
