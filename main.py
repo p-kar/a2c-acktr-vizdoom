@@ -197,7 +197,7 @@ def main():
             save_model = actor_critic
             if args.cuda:
                 save_model = copy.deepcopy(actor_critic).cpu()
-            torch.save(save_model, os.path.join(save_path, 'VizDoom' + ".pt"))
+            torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0:
             envs.log()
