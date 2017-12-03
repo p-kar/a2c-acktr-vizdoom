@@ -308,9 +308,18 @@ class ResnetPolicy(FFPolicy):
     def __init__(self, num_inputs, action_space_shape):
         super(ResnetPolicy, self).__init__()
 
-        self.resnet = models.resnet18()
+        net = models.resnet18()
 
-        self.linear1 = nn.Linear(1000, 512)
+        self.resnet = nn.Sequential(net.conv1, 
+                        net.bn1, \
+                        net.relu, \
+                        net.maxpool, \
+                        net.layer1, \
+                        net.layer2, \
+                        net.layer3, \
+                        net.layer4, \
+                        nn.AvgPool2d(kernel_size=2, stride=2, padding=0, ceil_mode=False, count_include_pad=True))
+
         self.dist_linear = nn.Linear(512, action_space_shape)
         self.critic_linear = nn.Linear(512, 1)
 
@@ -322,16 +331,13 @@ class ResnetPolicy(FFPolicy):
         self.apply(weights_init)
 
         relu_gain = nn.init.calculate_gain('relu')
-        # self.resnet.weight.data.mul_(relu_gain)
-        self.linear1.weight.data.mul_(relu_gain)
         self.dist_linear.weight.data.mul_(relu_gain)
         self.critic_linear.weight.data.mul_(relu_gain)
 
     def forward(self, inputs):
         # go forward in the base network
         x = self.resnet(inputs)
-        x = self.linear1(x)
-        x = F.relu(x)
+        x = x.view(-1, 512)
 
         value = self.critic_linear(x)
 

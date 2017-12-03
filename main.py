@@ -73,7 +73,7 @@ def main():
             source_models.append(torch.load(file))
         actor_critic = A2TPolicy(obs_shape[0], envs.action_space_shape, source_models)
     elif args.algo == 'resnet':
-        args.num_stack = 3
+        # args.num_stack = 3
         actor_critic = ResnetPolicy(obs_shape[0], envs.action_space_shape)
 
     action_shape = 1
