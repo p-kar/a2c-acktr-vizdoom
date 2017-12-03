@@ -84,8 +84,8 @@ def main():
     if args.algo == 'a2c' or args.algo == 'resnet':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'a2t':
-        params = [p for p in actor_critic.parameters() if p.requires_grad]
-        optimizer = optim.RMSprop(params, args.lr, eps=args.eps, alpha=args.alpha)
+        a2t_params = [p for p in actor_critic.parameters() if p.requires_grad]
+        optimizer = optim.RMSprop(a2t_params, args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
 
@@ -179,8 +179,10 @@ def main():
             optimizer.zero_grad()
             (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
 
-            if args.algo == 'a2c' or args.algo == 'a2t' or args.algo == 'resnet':
+            if args.algo == 'a2c' or args.algo == 'resnet':
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
+            elif args.algo == 'a2t':
+                nn.utils.clip_grad_norm(a2t_params, args.max_grad_norm)
 
             optimizer.step()
 

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as nninit
 from torchvision import models
 from running_stat import ObsNorm
 from distributions import Categorical, DiagGaussian
@@ -92,7 +93,7 @@ class CNNPolicy(FFPolicy):
             self.dist.fc_mean.weight.data.mul_(0.01)
 
     def forward(self, inputs):
-        x = self.conv1(inputs / 255.0)
+        x = self.conv1(inputs)
         x = F.relu(x)
 
         x = self.conv2(x)
@@ -215,22 +216,28 @@ class A2TPolicy(FFPolicy):
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.apply(weights_init)
-
-        relu_gain = nn.init.calculate_gain('relu')
-        self.base_conv1.weight.data.mul_(relu_gain)
-        self.base_conv2.weight.data.mul_(relu_gain)
-        self.base_linear1.weight.data.mul_(relu_gain)
-        self.base_dist_linear.weight.data.mul_(relu_gain)
-
-        self.attention_conv1.weight.data.mul_(relu_gain)
-        self.attention_conv2.weight.data.mul_(relu_gain)
-        self.attention_linear1.weight.data.mul_(relu_gain)
-        self.attention_dist_linear.weight.data.mul_(relu_gain)
+        nninit.xavier_normal(self.base_conv1.weight)
+        nninit.constant(self.base_conv1.bias, 0.1)
+        nninit.xavier_normal(self.base_conv2.weight)
+        nninit.constant(self.base_conv2.bias, 0.1)
+        nninit.xavier_normal(self.base_linear1.weight)
+        nninit.constant(self.base_linear1.bias, 0.1)
+        nninit.xavier_normal(self.base_dist_linear.weight)
+        nninit.constant(self.base_dist_linear.bias, 0.1)
+        nninit.xavier_normal(self.base_critic_linear.weight)
+        nninit.constant(self.base_critic_linear.bias, 0.1)
+        nninit.xavier_normal(self.attention_conv1.weight)
+        nninit.constant(self.attention_conv1.bias, 0.1)
+        nninit.xavier_normal(self.attention_conv2.weight)
+        nninit.constant(self.attention_conv2.bias, 0.1)
+        nninit.xavier_normal(self.attention_linear1.weight)
+        nninit.constant(self.attention_linear1.bias, 0.1)
+        nninit.xavier_normal(self.attention_dist_linear.weight)
+        nninit.constant(self.attention_dist_linear.bias, 0.1)
 
     def forward(self, inputs):
         # go forward in the base network
-        x = self.base_conv1(inputs / 255.0)
+        x = self.base_conv1(inputs)
         x = F.relu(x)
 
         x = self.base_conv2(x)
@@ -246,7 +253,7 @@ class A2TPolicy(FFPolicy):
         x = F.softmax(x)
 
         # go forward in the attention network
-        y = self.attention_conv1(inputs / 255.0)
+        y = self.attention_conv1(inputs)
         y = F.relu(y)
 
         y = self.attention_conv2(y)
@@ -261,7 +268,7 @@ class A2TPolicy(FFPolicy):
 
         # combine base and source task outputs
         # with the attention network weights
-        source_probs = [getattr(self, 'source_%d' % i).get_probs(inputs / 255.0)
+        source_probs = [getattr(self, 'source_%d' % i).get_probs(inputs)
                         for i in range(self.num_source_models)]
         source_probs.append(x)
         # stacking probability distribution as rows
@@ -275,8 +282,7 @@ class A2TPolicy(FFPolicy):
         return value, z
 
     def act(self, inputs, deterministic=False):
-        value, x = self(inputs)
-        probs = F.softmax(x)
+        value, probs = self(inputs)
         if deterministic is False:
             action = probs.multinomial()
         else:
@@ -284,10 +290,9 @@ class A2TPolicy(FFPolicy):
         return value, action
 
     def evaluate_actions(self, inputs, actions):
-        value, x = self(inputs)
+        value, probs = self(inputs)
 
-        log_probs = F.log_softmax(x)
-        probs = F.softmax(x)
+        log_probs = torch.log(probs)
 
         action_log_probs = log_probs.gather(1, actions)
         dist_entropy = -(log_probs * probs).sum(-1).mean()
@@ -295,8 +300,7 @@ class A2TPolicy(FFPolicy):
         return value, action_log_probs, dist_entropy
 
     def get_probs(self, inputs):
-        value, x = self(inputs)
-        probs = F.softmax(x)
+        value, probs = self(inputs)
         return probs
 
 # changed beginning network to resnet
@@ -325,7 +329,7 @@ class ResnetPolicy(FFPolicy):
 
     def forward(self, inputs):
         # go forward in the base network
-        x = self.resnet(inputs / 255.0)
+        x = self.resnet(inputs)
         x = self.linear1(x)
         x = F.relu(x)
 
