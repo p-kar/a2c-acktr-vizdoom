@@ -18,6 +18,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
     log_file = None
     if env_fn_wrapper.log_file != "":
         log_file = open(env_fn_wrapper.log_file, 'w')
+    get_bin = lambda x, n: format(x, 'b').zfill(n)
     total_reward = 0.0
     episode_reward = 0.0
     episode_cnt = 0.0
@@ -26,8 +27,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
         cmd, data = remote.recv()
         if data is None:
             import random
-            data = random.randint(0, env.get_available_buttons_size() - 1)
-        action = [True if i == data else False for i in range(env.get_available_buttons_size())]
+            data = random.randint(0, 2**env.get_available_buttons_size() - 1)
+        action = [True if i == '1' else False for i in get_bin(data, env.get_available_buttons_size())]
         
         if cmd == 'step':
             reward = env.make_action(action)
@@ -76,7 +77,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             remote.close()
             break
         elif cmd == 'get_spaces':
-            remote.send((env.get_available_buttons_size(), (1, 84, 84)))
+            remote.send((2**env.get_available_buttons_size(), (1, 84, 84)))
         else:
             raise NotImplementedError
 

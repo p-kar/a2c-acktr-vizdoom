@@ -47,7 +47,7 @@ def main():
     print("#################### VISDOOM LEARNER START ####################")
     print("###############################################################")
 
-    os.environ['OMP_NUM_THREADS'] = '1' 
+    os.environ['OMP_NUM_THREADS'] = '1'
 
     if args.vis:
         from visdom import Visdom
