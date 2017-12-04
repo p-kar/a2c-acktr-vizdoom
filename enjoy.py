@@ -14,8 +14,8 @@ parser.add_argument('--algo', default='a2c',
                     help='algorithm to use: a2c | acktr')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
-parser.add_argument('--num-stack', type=int, default=4,
-                    help='number of frames to stack (default: 4)')
+parser.add_argument('--num-stack', type=int, default=1,
+                    help='number of frames to stack (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10,
                     help='log interval, one log per n updates (default: 10)')
 parser.add_argument('--env-name', default='VizDoom',
@@ -53,8 +53,14 @@ def update_current_obs(obs):
 obs = envs.reset()
 update_current_obs(obs)
 
-while True:
-    sleep(0.01)
+num_episodes = 10
+total_reward = 0.0
+episode_cnt = 0
+episode_reward = 0.0
+
+while episode_cnt < num_episodes:
+    # sleep(0.01)
+    print (actor_critic.get_probs(Variable(current_obs, volatile=True)))
     value, action = actor_critic.act(Variable(current_obs, volatile=True),
                                         deterministic=True)
     cpu_actions = action.data.cpu().numpy()
@@ -62,11 +68,19 @@ while True:
     print ('Action:', [cpu_actions[0]])
 
     # Obser reward and next obs
-    obs, _, done, _ = envs.step([cpu_actions[0]])
+    obs, reward, done, _ = envs.step([cpu_actions[0]])
+    episode_reward += reward[0]
 
     if done:
+        total_reward += episode_reward
+        episode_cnt += 1
+        episode_reward = 0.0
         obs = envs.reset()
         actor_critic = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
         actor_critic.eval()
 
     update_current_obs(obs)
+
+print ('Avg reward:', round(total_reward / num_episodes))
+envs.close()
+

@@ -5,6 +5,9 @@ __pycache__/
 _vizdoom.ini
 *.wad.bak
 
+# Log files
+logs/
+
 # Network models
 trained_models/
 *.pt
