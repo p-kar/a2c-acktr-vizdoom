@@ -20,6 +20,7 @@ from kfac import KFACOptimizer
 from model import CNNPolicy, MLPPolicy, A2TPolicy, ResnetPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
+from eval import *
 # from gif import make_gif
 
 envs = None
@@ -219,6 +220,8 @@ def main():
                 win = visdom_plot(viz, win, args.log_dir, 'VizDoom', args.algo)
             except IOError:
                 pass
+        if j % args.eval_interval == args.eval_interval-1:
+            evaluate(envs, actor_critic, {'num_episodes': args.num_episodes, 'num_stack': args.num_stack})
     envs.close()
     time.sleep(5)
 

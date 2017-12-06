@@ -61,6 +61,8 @@ def get_args():
                         help='disables CUDA training')
     parser.add_argument('--no-vis', action='store_true', default=False,
                         help='disables visdom visualization')
+    parser.add_argument('--eval_interval', type=int, default=10000,
+                        help='number of steps for evaluation')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

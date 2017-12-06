@@ -25,7 +25,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
     total_episode_cnt = 0
     total_kills = 0.0
     episode_kills = 0.0
-    game_variables = None
+    game_variables = env.get_state().game_variables
     while True:
         cmd, data = remote.recv()
         if data is None:
