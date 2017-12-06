@@ -23,6 +23,9 @@ def worker(remote, parent_remote, env_fn_wrapper):
     episode_reward = 0.0
     episode_cnt = 0.0
     total_episode_cnt = 0
+    total_kills = 0.0
+    episode_kills = 0.0
+    game_variables = None
     while True:
         cmd, data = remote.recv()
         if data is None:
@@ -34,6 +37,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
             reward = env.make_action(action)
             if not env.is_episode_finished():
                 ob = process_frame(env.get_state().screen_buffer)
+                game_variables = env.get_state().game_variables
+                episode_kills = game_variables[2]
                 # agent_health = env.get_state().game_variables[0]
                 # agent_ammo = env.get_state().game_variables[1]
                 # if prev_agent_health > agent_health:                # we add a penalty if the agent is hit
@@ -46,6 +51,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             episode_reward += reward
             done = env.is_episode_finished()
             if done:
+                total_kills += episode_kills
                 env.new_episode()
                 ob = process_frame(env.get_state().screen_buffer)
                 total_reward += episode_reward
@@ -53,6 +59,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
                 total_episode_cnt += 1
                 episode_reward = 0.0
             remote.send((ob, reward, done, 0.0))
+        elif cmd == 'gv':
+            remote.send(game_variables)
         elif cmd == 'log':
             if log_file is None:
                 continue
@@ -63,6 +71,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             log_file.flush()
             total_reward = 0.0
             episode_cnt = 0.0
+            total_kills = 0.0
         elif cmd == 'reset':
             env.new_episode()
             ob = process_frame(env.get_state().screen_buffer)
@@ -139,6 +148,10 @@ class VecEnv():
             else:
                 cumul_dones |= np.stack(dones)
         return np.stack(obs), cumul_rewards, cumul_dones, infos
+
+    def get_game_variables(self, id):
+        self.remotes[id].send(['gv', None])
+        return self.remotes[id].recv()
 
     def log(self):
         for remote in self.remotes:

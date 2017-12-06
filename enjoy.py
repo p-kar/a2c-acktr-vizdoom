@@ -57,6 +57,7 @@ num_episodes = 10
 total_reward = 0.0
 episode_cnt = 0
 episode_reward = 0.0
+total_kills = 0.0
 
 while episode_cnt < num_episodes:
     # sleep(0.01)
@@ -75,6 +76,9 @@ while episode_cnt < num_episodes:
         total_reward += episode_reward
         episode_cnt += 1
         episode_reward = 0.0
+        episode_game_variables = envs.get_game_variables(0)
+        if episode_game_variables != None:
+            total_kills += episode_game_variables[2]
         obs = envs.reset()
         actor_critic = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
         actor_critic.eval()
@@ -82,5 +86,6 @@ while episode_cnt < num_episodes:
     update_current_obs(obs)
 
 print ('Avg reward:', round(total_reward / num_episodes))
+print ('Avg kills:', (total_kills/num_episodes))
 envs.close()
 
