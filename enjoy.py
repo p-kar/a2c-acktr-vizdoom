@@ -49,7 +49,7 @@ actor_critic = CNNPolicy(obs_shape[0], envs.action_space_shape)
 actor_critic.eval()
 
 
-reward, kills = evaluate(envs, actor_critic, {'num_episodes': args.num_episodes, 'num_stack': args.num_stack})
+reward, kills = evaluate(envs, actor_critic, {'num_episodes': args.num_episodes, 'num_stack': args.num_stack, 'cuda' : False})
 
 print('Reward : %f, Kills : %f\n' % (reward, kills))
 
