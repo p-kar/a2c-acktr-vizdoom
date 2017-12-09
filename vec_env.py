@@ -30,10 +30,24 @@ def worker(remote, parent_remote, env_fn_wrapper):
         cmd, data = remote.recv()
         if data is None:
             import random
-            data = random.randint(0, 2**env.get_available_buttons_size() - 1)
-        action = [True if i == '1' else False for i in get_bin(data, env.get_available_buttons_size())]
-        
+            data = random.randint(0, 3*4 - 1)
+            #data = random.randint(0, 2**env.get_available_buttons_size() - 1)
+        #action = [True if i == '1' else False for i in get_bin(data, env.get_available_buttons_size())]
+        def compute_action(d):
+            # No turn
+            if d < 4:
+                a = [False, False] + [True if i == '1' else False for i in get_bin(d, 2)]
+            # Left turn
+            elif d >= 4 and d < 8:
+                a = [True, False] + [True if i == '1' else False for i in get_bin(d-4, 2)]
+            # Right turn
+            elif d >=8:
+                a = [False, True] + [True if i == '1' else False for i in get_bin(d-8, 2)]
+            return a
+
+        action = compute_action(data)
         if cmd == 'step':
+            prev_game_variables = env.get_state().game_variables
             reward = env.make_action(action)
             if not env.is_episode_finished():
                 ob = process_frame(env.get_state().screen_buffer)
@@ -47,7 +61,9 @@ def worker(remote, parent_remote, env_fn_wrapper):
                 #     reward = reward - 0
                 # prev_agent_health = agent_health
                 # prev_agent_ammo = agent_ammo
-            reward = reward / 100.0                                 # normalizing the reward
+            #reward = reward / 100.0                                 # normalizing the reward
+            measurements = np.array(game_variables) - np.array(prev_game_variables)
+            reward = 0.5*(measurements[0]/30.0) + measurements[2]
             episode_reward += reward
             done = env.is_episode_finished()
             if done:
@@ -86,7 +102,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
             remote.close()
             break
         elif cmd == 'get_spaces':
-            remote.send((2**env.get_available_buttons_size(), (1, 84, 84)))
+            remote.send((3*4, (1, 84, 84)))
+            # remote.send((2**env.get_available_buttons_size(), (1, 84, 84)))
         else:
             raise NotImplementedError
 
@@ -122,7 +139,7 @@ class VecEnv():
             self.ps = [Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn, log_file)))
                 for (work_remote, remote, env_fn, log_file) in zip(self.work_remotes, self.remotes, env_fns, self.log_files)]
         for p in self.ps:
-            p.daemon = True # if the main process crashes, we should not cause things to hang
+#            p.daemon = True # if the main process crashes, we should not cause things to hang
             p.start()
         for remote in self.work_remotes:
             remote.close()

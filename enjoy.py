@@ -43,9 +43,9 @@ if args.vis == 1:
 else:
     envs = VecEnv([make_env(0, args.config_path)])
 
-# actor_critic = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
-obs_shape = envs.observation_space_shape
-actor_critic = CNNPolicy(obs_shape[0], envs.action_space_shape)
+actor_critic = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+#obs_shape = envs.observation_space_shape
+#actor_critic = CNNPolicy(obs_shape[0], envs.action_space_shape)
 actor_critic.eval()
 
 

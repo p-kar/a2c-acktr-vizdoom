@@ -221,8 +221,8 @@ def main():
             except IOError:
                 pass
         if j % args.eval_interval == 0:
-            r, k = evaluate(envs, actor_critic, {'num_episodes': 10, 'num_stack': args.num_stack, 'cuda' : args.cuda})
-            print('Reward : ', r, 'Kills : ', k)
+            r, k = evaluate(envs, actor_critic, {'num_episodes': 30, 'num_stack': args.num_stack, 'cuda' : args.cuda})
+            print('######## EVALUATION ######## Reward : ', r, 'Kills : ', k)
     envs.close()
     time.sleep(5)
 
