@@ -63,7 +63,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
                 # prev_agent_ammo = agent_ammo
             #reward = reward / 100.0                                 # normalizing the reward
             measurements = np.array(game_variables) - np.array(prev_game_variables)
-            reward = 0.5*(measurements[0]/30.0) + measurements[2]
+            #reward = 0.5*(measurements[0]/30.0) + measurements[2]
+            reward = reward/100.0
             episode_reward += reward
             done = env.is_episode_finished()
             if done:
