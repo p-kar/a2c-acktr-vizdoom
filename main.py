@@ -200,7 +200,7 @@ def main():
             save_model = actor_critic
             if args.cuda:
                 save_model = copy.deepcopy(actor_critic).cpu()
-            torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+            torch.save(save_model, os.path.join(save_path, args.env_name + "_" + str(j) + ".pt"))
 
         if j % args.log_interval == 0:
             envs.log()
@@ -220,9 +220,9 @@ def main():
                 win = visdom_plot(viz, win, args.log_dir, 'VizDoom', args.algo)
             except IOError:
                 pass
-        if j % args.eval_interval == 0:
-            r, k = evaluate(envs, actor_critic, {'num_episodes': 30, 'num_stack': args.num_stack, 'cuda' : args.cuda})
-            print('######## EVALUATION ######## Reward : ', r, 'Kills : ', k)
+        #if j % args.eval_interval == 0:
+        #    r, k = evaluate(envs, actor_critic, {'num_episodes': 30, 'num_stack': args.num_stack, 'cuda' : args.cuda})
+        #    print('######## EVALUATION ######## Reward : ', r, 'Kills : ', k)
     envs.close()
     time.sleep(5)
 
