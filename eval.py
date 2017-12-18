@@ -17,6 +17,7 @@ def evaluate(envs, model, opts):
     
     if opts['cuda']:
         current_obs = current_obs.cuda()
+        model.cuda()
 
     def update_current_obs(obs):
         shape_dim0 = envs.observation_space_shape[0]
